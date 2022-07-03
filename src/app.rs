@@ -9,8 +9,6 @@ struct Network {
     handle: JoinHandle<std::io::Result<()>>,
     /// Unbounded sender (of messages) to the network thread.
     submit: UnboundedSender<Message>,
-    /// Chat log of previously received messages.
-    log: Receiver<String>,
 }
 
 pub struct App {
@@ -19,6 +17,8 @@ pub struct App {
     network: Option<Network>,
     /// Contents of the user input.
     input: String,
+    /// Chat log of previously received messages.
+    log: Receiver<String>,
 }
 
 impl App {
@@ -28,12 +28,9 @@ impl App {
         log: Receiver<String>,
     ) -> Self {
         Self {
-            network: Some(Network {
-                handle,
-                submit,
-                log,
-            }),
             input: String::new(),
+            network: Some(Network { handle, submit }),
+            log,
         }
     }
 }
@@ -42,7 +39,7 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
-                let log = self.network.as_ref().unwrap().log.borrow();
+                let log = self.log.borrow();
                 for line in log.split_terminator('\n') {
                     ui.label(line);
                 }
