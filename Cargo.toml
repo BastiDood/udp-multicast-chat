@@ -3,11 +3,14 @@ name = "chat-room-cli"
 version = "0.1.0"
 edition = "2021"
 
+[dependencies]
+socket2 = "0.4"
+
 [dependencies.tokio]
 version = "1.19"
 default-features = false
 features = ["io-std", "io-util", "macros", "net", "parking_lot", "rt", "sync"]
 
-[profile.release]
-lto = true
-strip = true
+# [profile.release]
+# lto = true
+# strip = true
