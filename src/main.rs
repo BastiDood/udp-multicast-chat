@@ -41,14 +41,19 @@ fn main() -> io::Result<()> {
             .enable_io()
             .build()?
             .block_on(async move {
-                use tokio::io::AsyncWriteExt;
                 let mut stdout = tokio::io::stdout();
                 let socket = tokio::net::UdpSocket::from_std(socket.into())?;
                 let mut buf = [0; 64];
 
                 loop {
                     tokio::select! {
-                        count_res = socket.recv(&mut buf) => stdout.write_all(&buf[..count_res?]).await?,
+                        recv_res = socket.recv_from(&mut buf) => {
+                            use tokio::io::AsyncWriteExt;
+                            let (count, remote_addr) = recv_res?;
+                            let mut send_buffer = format!("[{remote_addr}]: ").into_bytes();
+                            send_buffer.extend_from_slice(&buf[..count]);
+                            stdout.write_all(&send_buffer).await?;
+                        }
                         input_res = rx.recv() => {
                             if let Some(input) = input_res {
                                 socket.send_to(&input, (MULTICAST_ADDR, MULTICAST_PORT)).await?;
