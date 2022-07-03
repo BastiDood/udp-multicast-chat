@@ -1,26 +1,7 @@
+mod app;
+
+use app::Message;
 use std::io;
-use tokio::sync::mpsc;
-
-type Message = Box<[u8]>;
-
-fn main_input_loop(tx: mpsc::UnboundedSender<Message>) -> io::Result<()> {
-    use io::BufRead;
-    let mut reader = io::BufReader::new(io::stdin());
-    let mut buf = String::with_capacity(32);
-
-    loop {
-        reader.read_line(&mut buf)?;
-        if buf.trim_end() == "/quit" {
-            // Closing the channel should signal the network thread to join.
-            break;
-        }
-
-        let msg = core::mem::take(&mut buf).into_bytes();
-        tx.send(msg.into_boxed_slice()).expect("receiver closed");
-    }
-
-    Ok(())
-}
 
 fn main() -> io::Result<()> {
     use std::net::{Ipv4Addr, SocketAddrV4};
@@ -29,32 +10,34 @@ fn main() -> io::Result<()> {
     let bound_addr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, MULTICAST_PORT).into();
 
     use socket2::{Domain, Protocol, Socket, Type};
-    let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
-    socket.set_reuse_address(true)?;
-    socket.set_nonblocking(true)?;
-    socket.join_multicast_v4(&MULTICAST_ADDR, &Ipv4Addr::UNSPECIFIED)?;
-    socket.bind(&bound_addr)?;
+    let sock = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
+    sock.set_reuse_address(true)?;
+    sock.set_nonblocking(true)?;
+    sock.join_multicast_v4(&MULTICAST_ADDR, &Ipv4Addr::UNSPECIFIED)?;
+    sock.bind(&bound_addr)?;
 
-    let (tx, mut rx) = mpsc::unbounded_channel::<Message>();
+    use tokio::sync::{mpsc, watch};
+    let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Message>();
+    let (log_tx, log_rx) = watch::channel(String::new());
     let handle = std::thread::spawn(|| {
         tokio::runtime::Builder::new_current_thread()
             .enable_io()
             .build()?
             .block_on(async move {
-                let mut stdout = tokio::io::stdout();
-                let socket = tokio::net::UdpSocket::from_std(socket.into())?;
+                let socket = tokio::net::UdpSocket::from_std(sock.into())?;
                 let mut buf = [0; 64];
 
                 loop {
                     tokio::select! {
                         recv_res = socket.recv_from(&mut buf) => {
-                            use tokio::io::AsyncWriteExt;
                             let (count, remote_addr) = recv_res?;
-                            let mut send_buffer = format!("[{remote_addr}]: ").into_bytes();
-                            send_buffer.extend_from_slice(&buf[..count]);
-                            stdout.write_all(&send_buffer).await?;
+                            let message = match core::str::from_utf8(&buf[..count]) {
+                                Ok(parsed) => format!("[{remote_addr}]: {parsed}\n"),
+                                _ => continue, // Skip invalid messages
+                            };
+                            log_tx.send_modify(|log| log.push_str(&message));
                         }
-                        input_res = rx.recv() => {
+                        input_res = msg_rx.recv() => {
                             if let Some(input) = input_res {
                                 socket.send_to(&input, (MULTICAST_ADDR, MULTICAST_PORT)).await?;
                             } else {
@@ -70,9 +53,12 @@ fn main() -> io::Result<()> {
             })
     });
 
-    let input_result = main_input_loop(tx);
-    handle
-        .join()
-        .expect("cannot join network thread")
-        .and(input_result)
+    eframe::run_native(
+        "Chat Room",
+        Default::default(),
+        Box::new(|eframe::CreationContext { egui_ctx, .. }| {
+            egui_ctx.set_visuals(eframe::egui::Visuals::dark());
+            Box::new(app::App::new(handle, msg_tx, log_rx))
+        }),
+    )
 }

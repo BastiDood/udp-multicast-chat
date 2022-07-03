@@ -4,12 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+eframe = "0.18"
 socket2 = "0.4"
 
 [dependencies.tokio]
 version = "1.19"
 default-features = false
-features = ["io-std", "io-util", "macros", "net", "parking_lot", "rt", "sync"]
+features = ["macros", "net", "parking_lot", "rt", "sync"]
 
 [profile.release]
 lto = true
