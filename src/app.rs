@@ -48,7 +48,6 @@ impl eframe::App for App {
         egui::TopBottomPanel::bottom("user-input").show(ctx, |ui| {
             let widget = egui::TextEdit::singleline(&mut self.input).desired_width(f32::INFINITY);
             if ui.add(widget).lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
-                self.input.push('\n');
                 let bytes = core::mem::take(&mut self.input)
                     .into_bytes()
                     .into_boxed_slice();
