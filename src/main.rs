@@ -31,14 +31,7 @@ fn main() -> io::Result<()> {
 
                 loop {
                     tokio::select! {
-                        recv_res = socket.recv_from(&mut buf) => {
-                            let (count, remote_addr) = recv_res?;
-                            let message = match core::str::from_utf8(&buf[..count]) {
-                                Ok(parsed) => format!("[{remote_addr}]: {parsed}\n"),
-                                _ => continue, // Skip invalid messages
-                            };
-                            log_tx.send_modify(|log| log.push_str(&message));
-                        }
+                        biased;
                         input_res = msg_rx.recv() => {
                             if let Some(input) = input_res {
                                 socket.send_to(&input, (MULTICAST_ADDR, MULTICAST_PORT)).await?;
@@ -47,6 +40,14 @@ fn main() -> io::Result<()> {
                                 // the standard input. It is time to terminate the program.
                                 break;
                             }
+                        }
+                        recv_res = socket.recv_from(&mut buf) => {
+                            let (count, remote_addr) = recv_res?;
+                            let message = match core::str::from_utf8(&buf[..count]) {
+                                Ok(parsed) => format!("[{remote_addr}]: {parsed}\n"),
+                                _ => continue, // Skip invalid messages
+                            };
+                            log_tx.send_modify(|log| log.push_str(&message));
                         }
                     }
                 }
