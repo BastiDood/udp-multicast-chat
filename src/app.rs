@@ -38,15 +38,20 @@ impl App {
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            ui.heading("Chat Log");
+            ui.separator();
             egui::ScrollArea::vertical().show(ui, |ui| {
-                let log = self.log.borrow();
-                for line in log.split_terminator('\n') {
-                    ui.label(line);
+                for line in self.log.borrow().split_terminator('\n') {
+                    ui.label(egui::RichText::new(line).font(egui::FontId::monospace(12.0)));
                 }
-            });
+            })
         });
         egui::TopBottomPanel::bottom("user-input").show(ctx, |ui| {
-            let widget = egui::TextEdit::singleline(&mut self.input).desired_width(f32::INFINITY);
+            let widget = egui::TextEdit::singleline(&mut self.input)
+                .desired_width(f32::INFINITY)
+                .hint_text("Press Enter to send chat message...")
+                .font(egui::FontId::proportional(16.0))
+                .margin(egui::vec2(8.0, 8.0));
             if ui.add(widget).lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
                 let bytes = core::mem::take(&mut self.input)
                     .into_bytes()
@@ -67,8 +72,6 @@ impl eframe::App for App {
         // Dropping the sender half synchronizes with the network
         // thread that it is now time to join with the main thread.
         drop(submit);
-
-        // It is important that the channel is dropped first before joining.
         handle
             .join()
             .expect("failed to join network thread")
