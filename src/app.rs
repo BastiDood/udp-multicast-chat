@@ -33,14 +33,16 @@ impl App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+        use egui::FontId;
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Chat Log");
+            ui.label("Note that all communication in this chat room is unencrypted and multi-casted.");
             ui.separator();
             egui::ScrollArea::vertical().show(ui, |ui| {
                 for line in self.log.borrow().split_terminator('\n') {
                     let (addr, msg) = line.split_once(' ').unwrap();
                     ui.horizontal(|ui| {
-                        use egui::{FontId, RichText};
+                        use egui::RichText;
                         ui.label(RichText::new(addr).font(FontId::monospace(12.0)).color(egui::Color32::GREEN));
                         ui.label(RichText::new(msg).font(FontId::monospace(12.0)));
                     });
@@ -51,7 +53,7 @@ impl eframe::App for App {
             let widget = egui::TextEdit::singleline(&mut self.input)
                 .desired_width(f32::INFINITY)
                 .hint_text("Press Enter to send chat message...")
-                .font(egui::FontId::proportional(16.0))
+                .font(FontId::proportional(16.0))
                 .margin(egui::vec2(8.0, 8.0));
             if ui.add(widget).lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
                 let bytes = core::mem::take(&mut self.input).into_bytes().into_boxed_slice();
