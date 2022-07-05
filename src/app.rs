@@ -27,11 +27,7 @@ impl App {
         submit: UnboundedSender<Message>,
         log: Receiver<String>,
     ) -> Self {
-        Self {
-            input: String::new(),
-            network: Some(Network { handle, submit }),
-            log,
-        }
+        Self { input: String::new(), network: Some(Network { handle, submit }), log }
     }
 }
 
@@ -58,15 +54,8 @@ impl eframe::App for App {
                 .font(egui::FontId::proportional(16.0))
                 .margin(egui::vec2(8.0, 8.0));
             if ui.add(widget).lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
-                let bytes = core::mem::take(&mut self.input)
-                    .into_bytes()
-                    .into_boxed_slice();
-                self.network
-                    .as_ref()
-                    .unwrap()
-                    .submit
-                    .send(bytes)
-                    .expect("receiver closed");
+                let bytes = core::mem::take(&mut self.input).into_bytes().into_boxed_slice();
+                self.network.as_ref().unwrap().submit.send(bytes).expect("receiver closed");
             }
         });
     }
@@ -77,9 +66,6 @@ impl eframe::App for App {
         // Dropping the sender half synchronizes with the network
         // thread that it is now time to join with the main thread.
         drop(submit);
-        handle
-            .join()
-            .expect("failed to join network thread")
-            .expect("network thread encountered an I/O error");
+        handle.join().expect("failed to join network thread").expect("network thread encountered an I/O error");
     }
 }
