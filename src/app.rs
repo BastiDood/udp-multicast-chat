@@ -42,7 +42,12 @@ impl eframe::App for App {
             ui.separator();
             egui::ScrollArea::vertical().show(ui, |ui| {
                 for line in self.log.borrow().split_terminator('\n') {
-                    ui.label(egui::RichText::new(line).font(egui::FontId::monospace(12.0)));
+                    let (addr, msg) = line.split_once(' ').unwrap();
+                    ui.horizontal(|ui| {
+                        use egui::{FontId, RichText};
+                        ui.label(RichText::new(addr).font(FontId::monospace(12.0)).color(egui::Color32::GREEN));
+                        ui.label(RichText::new(msg).font(FontId::monospace(12.0)));
+                    });
                 }
             })
         });
