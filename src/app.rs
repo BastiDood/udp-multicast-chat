@@ -6,7 +6,7 @@ pub type Message = Box<[u8]>;
 
 struct Network {
     /// Handle to the network thread.
-    handle: JoinHandle<std::io::Result<()>>,
+    handle: JoinHandle<()>,
     /// Unbounded sender (of messages) to the network thread.
     submit: UnboundedSender<Message>,
 }
@@ -23,7 +23,7 @@ pub struct App {
 
 impl App {
     pub fn new(
-        handle: JoinHandle<std::io::Result<()>>,
+        handle: JoinHandle<()>,
         submit: UnboundedSender<Message>,
         log: Receiver<String>,
     ) -> Self {
@@ -68,6 +68,6 @@ impl eframe::App for App {
         // Dropping the sender half synchronizes with the network
         // thread that it is now time to join with the main thread.
         drop(submit);
-        handle.join().expect("failed to join network thread").expect("network thread encountered an I/O error");
+        handle.join().expect("failed to join network thread");
     }
 }

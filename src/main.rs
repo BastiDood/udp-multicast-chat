@@ -18,38 +18,42 @@ fn main() -> io::Result<()> {
     sock.join_multicast_v4(&MULTICAST_ADDR, &Ipv4Addr::UNSPECIFIED)?;
     sock.bind(&bound_addr)?;
 
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_io().build()?;
+    let udp = {
+        let _guard = runtime.enter();
+        tokio::net::UdpSocket::from_std(sock.into())?
+    };
+
     use tokio::sync::{mpsc, watch};
     let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Message>();
     let (log_tx, log_rx) = watch::channel(String::new());
-    let handle = std::thread::spawn(|| {
-        tokio::runtime::Builder::new_current_thread().enable_io().build()?.block_on(async move {
-            let socket = tokio::net::UdpSocket::from_std(sock.into())?;
+    let handle = std::thread::spawn(move || {
+        runtime.block_on(async move {
             let mut buf = [0; 64];
-
             loop {
                 tokio::select! {
                     biased;
                     input_res = msg_rx.recv() => {
                         if let Some(input) = input_res {
-                            socket.send_to(&input, (MULTICAST_ADDR, MULTICAST_PORT)).await?;
+                            udp.send_to(&input, (MULTICAST_ADDR, MULTICAST_PORT)).await.expect("cannot send message to socket");
                         } else {
                             // Sender has closed, therefore we have stopped polling
                             // the standard input. It is time to terminate the program.
                             break;
                         }
                     }
-                    recv_res = socket.recv_from(&mut buf) => {
-                        let (count, remote_addr) = recv_res?;
-                        let message = match core::str::from_utf8(&buf[..count]) {
-                            Ok(parsed) => format!("[{remote_addr}]: {parsed}\n"),
-                            _ => continue, // Skip invalid messages
-                        };
-                        log_tx.send_modify(|log| log.push_str(&message));
+                    recv_res = udp.recv_from(&mut buf) => {
+                        let (count, remote_addr) = recv_res.expect("cannot receive from socket");
+                        if let Ok(parsed) = core::str::from_utf8(&buf[..count]) {
+                            log_tx.send_modify(|log| {
+                                use core::fmt::Write;
+                                log.write_fmt(format_args!("[{remote_addr}]: {parsed}\n")).expect("cannot append message to buffer");
+                            });
+                        }
+
                     }
                 }
             }
-
-            Ok(())
         })
     });
 
