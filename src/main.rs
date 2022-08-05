@@ -2,18 +2,34 @@
 
 mod app;
 
-fn main() -> std::io::Result<()> {
-    use std::net::{Ipv4Addr, SocketAddrV4};
-    const MULTICAST_ADDR: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 69);
-    const MULTICAST_PORT: u16 = 3000;
-    let bound_addr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, MULTICAST_PORT).into();
+use std::net::{Ipv4Addr, SocketAddrV4};
 
+const MULTICAST_ADDR: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 69);
+const MULTICAST_PORT: u16 = 3000;
+
+/// Networking options.
+#[derive(argh::FromArgs)]
+struct Args {
+    /// multicast address that the socket must join
+    #[argh(option, short = 'a', default = "MULTICAST_ADDR")]
+    addr: Ipv4Addr,
+    /// specific port to bind the socket to
+    #[argh(option, short = 'p', default = "MULTICAST_PORT")]
+    port: u16,
+    /// whether or not to allow the UDP socket
+    /// to be reused by another application
+    #[argh(switch)]
+    reuse: bool,
+}
+
+fn main() -> std::io::Result<()> {
     use socket2::{Domain, Protocol, Socket, Type};
+    let Args { addr, port, reuse } = argh::from_env();
     let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
-    socket.set_reuse_address(true)?;
+    socket.set_reuse_address(reuse)?;
     socket.set_nonblocking(true)?;
-    socket.join_multicast_v4(&MULTICAST_ADDR, &Ipv4Addr::UNSPECIFIED)?;
-    socket.bind(&bound_addr)?;
+    socket.join_multicast_v4(&addr, &Ipv4Addr::UNSPECIFIED)?;
+    socket.bind(&SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port).into())?;
 
     let runtime = tokio::runtime::Builder::new_current_thread().enable_io().build()?;
     let udp = {
@@ -32,7 +48,7 @@ fn main() -> std::io::Result<()> {
                     biased;
                     input_res = msg_rx.recv() => {
                         if let Some(input) = input_res {
-                            udp.send_to(&input, (MULTICAST_ADDR, MULTICAST_PORT)).await.expect("cannot send message to socket");
+                            udp.send_to(&input, (addr, port)).await.expect("cannot send message to socket");
                         } else {
                             // Sender has closed, therefore we have stopped polling
                             // the standard input. It is time to terminate the program.
