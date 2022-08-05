@@ -31,7 +31,7 @@ fn main() -> std::io::Result<()> {
     socket.join_multicast_v4(&addr, &Ipv4Addr::UNSPECIFIED)?;
     socket.bind(&SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port).into())?;
 
-    let runtime = tokio::runtime::Builder::new_current_thread().enable_io().build()?;
+    let runtime = tokio::runtime::Builder::new_current_thread().thread_name("network").enable_io().build()?;
     let udp = {
         let _guard = runtime.enter();
         tokio::net::UdpSocket::from_std(socket.into())?
