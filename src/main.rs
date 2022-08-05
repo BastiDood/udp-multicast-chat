@@ -2,30 +2,27 @@
 
 mod app;
 
-use app::Message;
-use std::io;
-
-fn main() -> io::Result<()> {
+fn main() -> std::io::Result<()> {
     use std::net::{Ipv4Addr, SocketAddrV4};
     const MULTICAST_ADDR: Ipv4Addr = Ipv4Addr::new(224, 0, 0, 69);
     const MULTICAST_PORT: u16 = 3000;
     let bound_addr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, MULTICAST_PORT).into();
 
     use socket2::{Domain, Protocol, Socket, Type};
-    let sock = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
-    sock.set_reuse_address(true)?;
-    sock.set_nonblocking(true)?;
-    sock.join_multicast_v4(&MULTICAST_ADDR, &Ipv4Addr::UNSPECIFIED)?;
-    sock.bind(&bound_addr)?;
+    let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;
+    socket.set_reuse_address(true)?;
+    socket.set_nonblocking(true)?;
+    socket.join_multicast_v4(&MULTICAST_ADDR, &Ipv4Addr::UNSPECIFIED)?;
+    socket.bind(&bound_addr)?;
 
     let runtime = tokio::runtime::Builder::new_current_thread().enable_io().build()?;
     let udp = {
         let _guard = runtime.enter();
-        tokio::net::UdpSocket::from_std(sock.into())?
+        tokio::net::UdpSocket::from_std(socket.into())?
     };
 
     use tokio::sync::{mpsc, watch};
-    let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Message>();
+    let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<app::Message>();
     let (log_tx, log_rx) = watch::channel(String::new());
     let handle = std::thread::spawn(move || {
         runtime.block_on(async move {
