@@ -77,5 +77,7 @@ fn main() -> std::io::Result<()> {
             egui_ctx.set_visuals(eframe::egui::Visuals::dark());
             Box::new(app::App::new(handle, msg_tx, log_rx))
         }),
-    )
+    );
+
+    Ok(())
 }

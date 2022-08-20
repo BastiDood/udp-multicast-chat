@@ -62,7 +62,7 @@ impl eframe::App for App {
         });
     }
 
-    fn on_exit(&mut self, _: &eframe::glow::Context) {
+    fn on_exit(&mut self) {
         let Network { handle, submit, .. } = self.network.take().unwrap();
 
         // Dropping the sender half synchronizes with the network
