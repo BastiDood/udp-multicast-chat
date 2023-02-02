@@ -8,12 +8,12 @@ argh = "0.1"
 socket2 = "0.4"
 
 [dependencies.eframe]
-version = "0.19"
+version = "0.20"
 default-features = false
 features = ["default_fonts", "wgpu"]
 
 [dependencies.tokio]
-version = "1.20"
+version = "1.25"
 default-features = false
 features = ["macros", "net", "parking_lot", "rt", "sync"]
 
