@@ -55,7 +55,7 @@ impl eframe::App for App {
                 .hint_text("Press Enter to send chat message...")
                 .font(FontId::proportional(16.0))
                 .margin(egui::vec2(8.0, 8.0));
-            if ui.add(widget).lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
+            if ui.add(widget).lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                 let bytes = core::mem::take(&mut self.input).into_bytes().into_boxed_slice();
                 self.network.as_ref().unwrap().submit.send(bytes).expect("receiver closed");
             }
