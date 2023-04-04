@@ -47,13 +47,10 @@ fn main() -> std::io::Result<()> {
                 tokio::select! {
                     biased;
                     input_res = msg_rx.recv() => {
-                        if let Some(input) = input_res {
-                            udp.send_to(&input, (addr, port)).await.expect("cannot send message to socket");
-                        } else {
-                            // Sender has closed, therefore we have stopped polling
-                            // the standard input. It is time to terminate the program.
+                        let Some(input) = input_res else {
                             break;
-                        }
+                        };
+                        udp.send_to(&input, (addr, port)).await.expect("cannot send message to socket");
                     }
                     recv_res = udp.recv_from(&mut buf) => {
                         let (count, remote_addr) = recv_res.expect("cannot receive from socket");
@@ -63,7 +60,6 @@ fn main() -> std::io::Result<()> {
                                 log.write_fmt(format_args!("[{remote_addr}]: {parsed}\n")).expect("cannot append message to buffer");
                             });
                         }
-
                     }
                 }
             }
