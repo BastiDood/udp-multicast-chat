@@ -1,7 +1,8 @@
 # UDP Multicast Chat Room
 UDP multicast provides a mechanism for one-to-many communication in a network. Unlike broadcasting, a multicast may only be received by those subscribed to the particular multicast address of interest. This application implements a basic chat room multicast over a local area network.
 
-> **DISCLAIMER:** All messages in the chat room are sent over _unencrypted_ UDP multicast channels.
+> [!CAUTION]
+> All messages in the chat room are sent over _unencrypted_ UDP multicast channels.
 
 ![UI Screenshot](./docs/screenshot.png)
 
