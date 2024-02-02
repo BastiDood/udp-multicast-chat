@@ -22,11 +22,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(
-        handle: JoinHandle<()>,
-        submit: UnboundedSender<Message>,
-        log: Receiver<String>,
-    ) -> Self {
+    pub fn new(handle: JoinHandle<()>, submit: UnboundedSender<Message>, log: Receiver<String>) -> Self {
         Self { input: String::new(), network: Some(Network { handle, submit }), log }
     }
 }
